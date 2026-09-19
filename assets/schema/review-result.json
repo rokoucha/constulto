@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rokoucha/constulto/schema/review-result.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "findings", "decisions", "scope"],
+  "properties": {
+    "summary": {"type": "string"},
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "decisions": {"type": "array", "items": {"$ref": "#/$defs/decision"}},
+    "scope": {"$ref": "#/$defs/scope"}
+  },
+  "$defs": {
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "claim", "impact", "evidence", "reproduction", "suggestion", "unverified"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1}, "claim": {"type": "string"},
+        "impact": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "string"}},
+        "reproduction": {"type": "string"}, "suggestion": {"type": "string"},
+        "unverified": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["question", "options", "recommendation", "changeConditions"],
+      "properties": {
+        "question": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}},
+        "recommendation": {"type": "string"}, "changeConditions": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reviewed", "notReviewed", "testsNotRun"],
+      "properties": {
+        "reviewed": {"type": "array", "items": {"type": "string"}},
+        "notReviewed": {"type": "array", "items": {"type": "string"}},
+        "testsNotRun": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

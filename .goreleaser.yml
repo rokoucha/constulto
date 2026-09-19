@@ -1,0 +1,47 @@
+version: 2
+
+project_name: constulto
+
+before:
+  hooks:
+    - go test ./...
+
+builds:
+  - main: ./cmd/constulto
+    binary: constulto
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/rokoucha/constulto/internal/cli.Version={{.Version}}
+      - -X github.com/rokoucha/constulto/internal/cli.Commit={{.Commit}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+homebrew_casks:
+  - name: constulto
+    binaries: [constulto]
+    homepage: https://github.com/rokoucha/constulto
+    description: Request independent design and implementation reviews from coding agents
+    repository:
+      owner: rokoucha
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/constulto"]
+          end

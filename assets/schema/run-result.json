@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rokoucha/constulto/schema/run-result.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "kind", "targetFingerprint", "toolVersion", "toolCommit", "sourceUrl", "templateVersion", "agent", "adapter", "adapterVersion", "model", "status", "stale", "startedAt", "finishedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "runId": {"type": "string"},
+    "kind": {"enum": ["design", "implementation"]},
+    "targetFingerprint": {"type": "string"},
+    "toolVersion": {"type": "string"},
+    "toolCommit": {"type": "string"},
+    "sourceUrl": {"type": "string"},
+    "templateVersion": {"type": "string"},
+    "agent": {"type": "string"},
+    "adapter": {"type": "string"},
+    "adapterVersion": {"type": "string"},
+    "requestedModel": {"type": "string"},
+    "model": {"type": "string"},
+    "observedModels": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "restrictions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "providerReportedCostUsd": {"type": "number", "minimum": 0},
+    "status": {"enum": ["completed", "partial", "failed", "cancelled", "running"]},
+    "stale": {"type": "boolean"},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "errorType": {"type": "string"},
+    "error": {"type": "string"},
+    "review": {"$ref": "review-result.json"},
+    "agentResults": {"type": "array", "items": {"$ref": "#"}}
+  }
+}

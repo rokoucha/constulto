@@ -1,0 +1,10 @@
+changelog:
+  categories:
+    - title: Breaking changes
+      labels: [major, breaking-change]
+    - title: Features
+      labels: [minor, enhancement]
+    - title: Fixes and improvements
+      labels: ["*"]
+  exclude:
+    labels: [skip-changelog]

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rokoucha/constulto/schema/manifest.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "kind", "status", "startedAt", "target", "agent", "adapter", "configSources"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string"},
+    "kind": {"enum": ["design", "implementation"]},
+    "status": {"enum": ["running", "completed", "partial", "failed", "cancelled"]},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "fingerprint"],
+      "properties": {
+        "root": {"type": "string"}, "base": {"type": "string"}, "mergeBase": {"type": "string"},
+        "head": {"type": "string"}, "status": {"type": "string"},
+        "untracked": {"type": "array", "items": {"type": "string"}},
+        "included": {"type": "array", "items": {"type": "string"}},
+        "excluded": {"type": "array", "items": {"type": "string"}},
+        "fingerprint": {"type": "string"}
+      }
+    },
+    "agent": {"type": "string"},
+    "adapter": {"type": "string"},
+    "agents": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "parentRunId": {"type": "string"},
+    "configSources": {"type": "array", "items": {"type": "string"}}
+  }
+}
