@@ -74,6 +74,10 @@ constulto skill install --agent codex --force
       "adapter": "muse",
       "command": "muse"
     },
+    "codex": {
+      "adapter": "codex",
+      "command": "codex"
+    },
     "open-model": {
       "adapter": "opencode",
       "command": "opencode",

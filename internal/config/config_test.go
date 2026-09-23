@@ -83,3 +83,20 @@ func TestOpenCodeRequiresModel(t *testing.T) {
 		t.Fatalf("expected missing model error, got %v", err)
 	}
 }
+
+// TestCodexAdapterLoads はCodexアダプタ設定が正常に読み込めることを検証します。
+func TestCodexAdapterLoads(t *testing.T) {
+	dir := t.TempDir()
+	user := filepath.Join(dir, "user.json")
+	if err := os.WriteFile(user, []byte(`{"version":1,"defaults":{"agent":"cx"},"agents":{"cx":{"adapter":"codex","command":"codex"}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(user, dir)
+	if err != nil {
+		t.Fatalf("failed to load codex config: %v", err)
+	}
+	if got.Config.Agents["cx"].Adapter != "codex" || got.Config.Agents["cx"].Command != "codex" {
+		t.Fatalf("unexpected codex agent config: %#v", got.Config.Agents["cx"])
+	}
+}
+

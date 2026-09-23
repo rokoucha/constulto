@@ -115,6 +115,8 @@ func Restrictions(adapter string) []string {
 		return []string{"write:disabled", "shell:disabled", "web:disabled", "foreign-context:none", "session-log:none", "approval:never"}
 	case "opencode":
 		return []string{"edit:deny", "bash:deny", "task:deny", "webfetch:deny", "websearch:deny", "external-directory:deny", "project-config:disabled", "global-config:isolated", "plugins:pure", "external-skills:disabled"}
+	case "codex":
+		return []string{"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:ignored", "rules:ignored", "daemon:disabled"}
 	default:
 		return nil
 	}
