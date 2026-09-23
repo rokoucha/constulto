@@ -28,7 +28,7 @@
       "additionalProperties": false,
       "required": ["adapter", "command"],
       "properties": {
-        "adapter": {"enum": ["claude", "muse", "opencode"]},
+        "adapter": {"enum": ["claude", "muse", "opencode", "codex"]},
         "command": {"type": "string", "minLength": 1},
         "model": {"type": "string", "minLength": 1}
       },

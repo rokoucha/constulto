@@ -24,9 +24,9 @@ import (
 func TestLiveReadOnlyRestrictions(t *testing.T) {
 	adapter := os.Getenv("CONSTULTO_LIVE_ADAPTER")
 	if adapter == "" {
-		t.Skip("set CONSTULTO_LIVE_ADAPTER=claude|muse|opencode")
+		t.Skip("set CONSTULTO_LIVE_ADAPTER=claude|muse|opencode|codex")
 	}
-	commands := map[string]string{"claude": "claude", "muse": "muse", "opencode": "opencode"}
+	commands := map[string]string{"claude": "claude", "muse": "muse", "opencode": "opencode", "codex": "codex"}
 	command, ok := commands[adapter]
 	if !ok {
 		t.Fatalf("unknown adapter %q", adapter)
