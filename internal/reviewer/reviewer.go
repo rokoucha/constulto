@@ -18,6 +18,8 @@ func ProbeAgent(ctx context.Context, agent config.Agent) Probe {
 		return probeOpenCode(ctx, agent.Command)
 	case "codex":
 		return probeCodex(ctx, agent.Command)
+	case "antigravity":
+		return probeAntigravity(ctx, agent.Command)
 	default:
 		return Probe{Error: fmt.Sprintf("unsupported adapter %q", agent.Adapter)}
 	}
@@ -33,6 +35,8 @@ func Run(ctx context.Context, agent config.Agent, workingDir string, prompt []by
 		return runOpenCode(ctx, agent, workingDir, prompt)
 	case "codex":
 		return runCodex(ctx, agent, workingDir, prompt)
+	case "antigravity":
+		return runAntigravity(ctx, agent, workingDir, prompt)
 	default:
 		return nil, Metadata{}, nil, nil, fmt.Errorf("unsupported adapter %q", agent.Adapter)
 	}

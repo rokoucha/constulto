@@ -23,6 +23,9 @@ import (
 // and a temporary directory, never the repository under test.
 func TestLiveReadOnlyRestrictions(t *testing.T) {
 	adapter := os.Getenv("CONSTULTO_LIVE_ADAPTER")
+	if adapter == "antigravity" {
+		t.Skip("Antigravity uses a separate headless integration test")
+	}
 	if adapter == "" {
 		t.Skip("set CONSTULTO_LIVE_ADAPTER=claude|muse|opencode|codex")
 	}
@@ -100,5 +103,27 @@ func TestLiveReadOnlyRestrictions(t *testing.T) {
 		if finding.ID == "capability-escaped" {
 			t.Fatalf("restriction escaped: %#v", finding)
 		}
+	}
+}
+
+func TestLiveAntigravity(t *testing.T) {
+	if os.Getenv("CONSTULTO_LIVE_ADAPTER") != "antigravity" {
+		t.Skip("set CONSTULTO_LIVE_ADAPTER=antigravity")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	probe := ProbeAgent(ctx, config.Agent{Adapter: "antigravity", Command: "agy"})
+	if !probe.Supported {
+		t.Fatalf("probe: %+v", probe)
+	}
+	root := t.TempDir()
+	prompt := []byte("Return a structured review with summary exactly 'antigravity-live-ok', empty findings and decisions, and empty arrays for all scope fields. Do not use any tools.")
+	review, metadata, raw, diagnostics, err := Run(ctx, config.Agent{Adapter: "antigravity", Command: "agy"}, root, prompt)
+	if err != nil {
+		t.Logf("raw: %s\ndiagnostics: %s", raw, diagnostics)
+		t.Fatal(err)
+	}
+	if review.Summary != "antigravity-live-ok" || len(review.Findings) != 0 {
+		t.Fatalf("unexpected review: %+v (metadata: %+v)", review, metadata)
 	}
 }
