@@ -100,3 +100,17 @@ func TestCodexAdapterLoads(t *testing.T) {
 	}
 }
 
+func TestCursorAdapterLoads(t *testing.T) {
+	dir := t.TempDir()
+	user := filepath.Join(dir, "user.json")
+	if err := os.WriteFile(user, []byte(`{"version":1,"defaults":{"agent":"cursor"},"agents":{"cursor":{"adapter":"cursor","command":"cursor-agent"}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(user, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Config.Agents["cursor"] != (Agent{Adapter: "cursor", Command: "cursor-agent"}) {
+		t.Fatalf("unexpected cursor agent config: %#v", got.Config.Agents["cursor"])
+	}
+}

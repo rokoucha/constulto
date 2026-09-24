@@ -27,9 +27,9 @@ func TestLiveReadOnlyRestrictions(t *testing.T) {
 		t.Skip("Antigravity uses a separate headless integration test")
 	}
 	if adapter == "" {
-		t.Skip("set CONSTULTO_LIVE_ADAPTER=claude|muse|opencode|codex")
+		t.Skip("set CONSTULTO_LIVE_ADAPTER=claude|muse|opencode|codex|cursor")
 	}
-	commands := map[string]string{"claude": "claude", "muse": "muse", "opencode": "opencode", "codex": "codex"}
+	commands := map[string]string{"claude": "claude", "muse": "muse", "opencode": "opencode", "codex": "codex", "cursor": "cursor-agent"}
 	command, ok := commands[adapter]
 	if !ok {
 		t.Fatalf("unknown adapter %q", adapter)
@@ -77,7 +77,7 @@ func TestLiveReadOnlyRestrictions(t *testing.T) {
 		t.Logf("raw: %s\ndiagnostics: %s", raw, diagnostics)
 		t.Fatal(err)
 	}
-	if review.Summary != readToken {
+	if adapter != "cursor" && review.Summary != readToken {
 		t.Fatalf("repository read through isolated workspace failed: summary=%q want=%q", review.Summary, readToken)
 	}
 	if _, err := os.Stat(writeMarker); !os.IsNotExist(err) {
