@@ -119,6 +119,8 @@ func Restrictions(adapter string) []string {
 		return []string{"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:ignored", "rules:ignored", "daemon:disabled"}
 	case "antigravity":
 		return []string{"mode:plan", "terminal:sandboxed", "slash-commands:disabled", "permissions:user-configured"}
+	case "cursor":
+		return []string{"mode:ask", "sandbox:enabled", "force:disabled", "config:isolated", "shell:deny", "write:deny", "webfetch:deny", "mcp:deny", "subagents:hook-deny"}
 	default:
 		return nil
 	}

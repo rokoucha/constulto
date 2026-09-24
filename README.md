@@ -82,6 +82,10 @@ constulto skill install --agent codex --force
       "adapter": "antigravity",
       "command": "agy"
     },
+    "cursor": {
+      "adapter": "cursor",
+      "command": "cursor-agent"
+    },
     "open-model": {
       "adapter": "opencode",
       "command": "opencode",
@@ -96,6 +100,8 @@ constulto skill install --agent codex --force
 設定した全プロファイル（`--agent`指定時は選択したもの）のCLI版と必要な制御フラグ、およびインストール済みSkillが同梱版と一致するかを確認します。
 実行結果にはツール・テンプレート・アダプターの版、実際に観測できたモデル、適用した制限、provider報告コストを保存します。
 provider報告コストは実際の請求額を保証しません。
+
+Cursor CLI は `--mode ask` と `--sandbox enabled` で実行し、一時設定で Shell・Write・WebFetch・MCP とサブエージェント起動を拒否します。読み取れる範囲は Cursor の実行環境に依存します。
 
 ## License
 
