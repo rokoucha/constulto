@@ -78,6 +78,10 @@ constulto skill install --agent codex --force
       "adapter": "codex",
       "command": "codex"
     },
+    "antigravity": {
+      "adapter": "antigravity",
+      "command": "agy"
+    },
     "open-model": {
       "adapter": "opencode",
       "command": "opencode",
