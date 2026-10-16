@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.0.3](https://github.com/rokoucha/constulto/compare/v0.0.2...v0.0.3) - 2026-10-16
+
+### Fixes and improvements
+- Update Songmu/tagpr action to v1.21.0 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/8
+- Update Songmu/tagpr action to v1.21.1 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/10
+- Update Songmu/tagpr action to v1.21.2 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/11
+- Update goreleaser/goreleaser-action action to v7.3.0 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/12
+- Clarify consent included in explicit review requests by @rokoucha in https://github.com/rokoucha/constulto/pull/13
+
 ## [v0.0.2](https://github.com/rokoucha/constulto/compare/v0.0.1...v0.0.2) - 2026-09-24
 
 ### Fixes and improvements
