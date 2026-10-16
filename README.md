@@ -50,6 +50,8 @@ constulto skill install --agent codex --force
 - `maxFollowups` は元のrunから派生する追加照会の合計上限です
   - 各followupは元の依頼書を維持し、新しい証拠を別ファイルへ保存します。
 
+同梱Skillでは、「Claudeにこの変更をレビューして」のような送信先を指定した依頼を、レビューに必要な差分・関連ソース・README・依存定義・テストなどの送信許可として扱います。同じタスク・送信先で資料を追加するたびに、ファイル一覧やペイロードへの再承認は求めません。資格情報や無関係な機微情報などは対象外です。Codexなどの実行環境が行う承認審査を無効にするものではありません。既存のSkillには `constulto skill install --agent codex --force` で反映してください。
+
 ## 設定
 
 - ユーザー設定: `${XDG_CONFIG_HOME:-~/.config}/constulto/config.json`
