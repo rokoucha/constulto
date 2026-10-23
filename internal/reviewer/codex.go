@@ -51,7 +51,7 @@ func probeCodex(ctx context.Context, command string) Probe {
 	if err != nil {
 		return Probe{Version: versionText, Error: err.Error()}
 	}
-	for _, flag := range []string{"--json", "--output-schema", "--sandbox", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--cd", "--model"} {
+	for _, flag := range []string{"--json", "--output-schema", "--sandbox", "--ephemeral", "--ignore-rules", "--cd", "--model"} {
 		if !bytes.Contains(execHelp, []byte(flag)) {
 			return Probe{Version: versionText, Error: "required capability missing: " + flag}
 		}
@@ -60,7 +60,7 @@ func probeCodex(ctx context.Context, command string) Probe {
 	return Probe{Version: versionText, Supported: true}
 }
 
-// runCodex はCodex CLIを隔離された環境で実行し、構造化レビュー結果を取得します。
+// runCodex は接続設定を引き継ぎ、読み取り専用で構造化レビュー結果を取得します。
 func runCodex(ctx context.Context, agent config.Agent, workingDir string, prompt []byte) (*runstore.Review, Metadata, []byte, []byte, error) {
 	tmp, err := os.MkdirTemp("", "constulto-codex-")
 	if err != nil {
@@ -90,7 +90,6 @@ func runCodex(ctx context.Context, agent config.Agent, workingDir string, prompt
 		"--output-schema", schemaPath,
 		"--sandbox", "read-only",
 		"--ephemeral",
-		"--ignore-user-config",
 		"--ignore-rules",
 		"--color", "never",
 		"--cd", workingDir,
@@ -119,11 +118,11 @@ func runCodex(ctx context.Context, agent config.Agent, workingDir string, prompt
 
 // codexEvent はCodex CLIの--json出力のJSONLイベントを表します。
 type codexEvent struct {
-	Type    string          `json:"type"`
-	Error   any             `json:"error,omitempty"`
-	Message string          `json:"message,omitempty"`
-	Item    *codexItem      `json:"item,omitempty"`
-	Model   string          `json:"model,omitempty"`
+	Type    string     `json:"type"`
+	Error   any        `json:"error,omitempty"`
+	Message string     `json:"message,omitempty"`
+	Item    *codexItem `json:"item,omitempty"`
+	Model   string     `json:"model,omitempty"`
 }
 
 type codexItem struct {
@@ -194,6 +193,10 @@ func parseCodex(raw []byte, defaultModel string) (*runstore.Review, Metadata, er
 		return nil, Metadata{}, fmt.Errorf("%w: Codex JSONL: %v", ErrInvalidOutput, err)
 	}
 
+	if !terminalSeen {
+		return nil, Metadata{}, fmt.Errorf("%w: Codex turn did not complete", ErrInvalidOutput)
+	}
+
 	if finalText == "" {
 		return nil, Metadata{}, fmt.Errorf("%w: Codex returned no agent message", ErrInvalidOutput)
 	}
@@ -221,8 +224,6 @@ func parseCodex(raw []byte, defaultModel string) (*runstore.Review, Metadata, er
 		Model:          model,
 		ObservedModels: observed,
 	}
-
-	_ = terminalSeen // ターン完了フラグ（将来の拡張用）
 
 	return &review, metadata, nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -337,5 +338,43 @@ func TestReviewMarksResultStaleWhenIncludedFileChanges(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "stale: target changed") {
 		t.Fatalf("not stale: %s", out.String())
+	}
+}
+
+func TestClaudeSkillInstall(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	path := filepath.Join(home, ".claude", "skills", "constulto", "SKILL.md")
+	var out, stderr bytes.Buffer
+	app := App{Stdout: &out, Stderr: &stderr, Getwd: os.Getwd}
+	run := func(flags ...string) int {
+		t.Helper()
+		out.Reset()
+		stderr.Reset()
+		return app.Run(context.Background(), append([]string{"skill", "install", "--agent", "claude"}, flags...))
+	}
+	if code := run("--dry-run"); code != 0 || !strings.Contains(out.String(), path) {
+		t.Fatalf("code=%d out=%s err=%s", code, &out, &stderr)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("dry-run wrote skill: %v", err)
+	}
+	if code := run(); code != 0 {
+		t.Fatalf("install: %d %s", code, &stderr)
+	}
+	if check := inspectSkill("claude"); check.Status != "current" || check.Path != path {
+		t.Fatalf("unexpected check: %#v", check)
+	}
+	if code := run(); code != 0 || !strings.Contains(out.String(), "already current") {
+		t.Fatalf("reinstall: %d %s %s", code, &out, &stderr)
+	}
+	if err := os.WriteFile(path, []byte("modified"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if code := run(); code != 1 {
+		t.Fatalf("overwrote modified skill: %d", code)
+	}
+	if code := run("--force"); code != 0 || inspectSkill("claude").Status != "current" {
+		t.Fatalf("force: %d %s", code, &stderr)
 	}
 }

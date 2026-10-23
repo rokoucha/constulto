@@ -116,7 +116,7 @@ func Restrictions(adapter string) []string {
 	case "opencode":
 		return []string{"edit:deny", "bash:deny", "task:deny", "webfetch:deny", "websearch:deny", "external-directory:deny", "project-config:disabled", "global-config:isolated", "plugins:pure", "external-skills:disabled"}
 	case "codex":
-		return []string{"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:ignored", "rules:ignored", "daemon:disabled"}
+		return []string{"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:loaded", "rules:ignored", "daemon:disabled"}
 	case "antigravity":
 		return []string{"mode:plan", "terminal:sandboxed", "slash-commands:disabled", "permissions:user-configured"}
 	case "cursor":

@@ -23,7 +23,7 @@ if [ "$1" = "--version" ]; then
 elif [ "$1" = "--help" ]; then
   echo "--no-daemon --ask-for-approval exec"
 elif [ "$1" = "exec" ] && [ "$2" = "--help" ]; then
-  echo "--json --output-schema --sandbox --ephemeral --ignore-user-config --ignore-rules --cd --model"
+  echo "--json --output-schema --sandbox --ephemeral --ignore-rules --cd --model"
 fi
 `
 	if err := os.WriteFile(command, []byte(script), 0700); err != nil {
@@ -49,7 +49,7 @@ if [ "$1" = "--version" ]; then
 elif [ "$1" = "--help" ]; then
   echo "--no-daemon exec"
 elif [ "$1" = "exec" ] && [ "$2" = "--help" ]; then
-  echo "--json --output-schema --sandbox --ephemeral --ignore-user-config --ignore-rules --cd --model"
+  echo "--json --output-schema --sandbox --ephemeral --ignore-rules --cd --model"
 fi
 `
 	if err := os.WriteFile(command, []byte(script), 0700); err != nil {
@@ -72,6 +72,10 @@ func TestParseCodexCompletedReview(t *testing.T) {
 	review, metadata, err := parseCodex(raw, "gpt-5")
 	if err != nil {
 		t.Fatal(err)
+	}
+	truncated := strings.Replace(string(raw), "{\"type\":\"turn.completed\"}\n", "", 1)
+	if _, _, err := parseCodex([]byte(truncated), "gpt-5"); !errors.Is(err, ErrInvalidOutput) {
+		t.Fatalf("expected truncated turn error, got %v", err)
 	}
 	if review.Summary != "all good" || len(review.Scope.Reviewed) != 1 {
 		t.Fatalf("unexpected review: %#v", review)
@@ -142,8 +146,11 @@ func TestRunCodexUsesRestrictedEnvironment(t *testing.T) {
 	script := `#!/bin/sh
 # 必須の安全制御引数が渡されているか検証
 args="$*"
+for arg in "$@"; do
+  if [ "$arg" = "--ignore-user-config" ]; then exit 4; fi
+done
 case "$args" in
-  *"--no-daemon"*"--ask-for-approval never"*"exec"*"--json"*"--output-schema"*"--sandbox read-only"*"--ephemeral"*"--ignore-user-config"*"--ignore-rules"*"--color never"*"--cd "*"--model test-model"*" -")
+  *"--no-daemon"*"--ask-for-approval never"*"exec"*"--json"*"--output-schema"*"--sandbox read-only"*"--ephemeral"*"--ignore-rules"*"--color never"*"--cd "*"--model test-model"*" -")
     ;;
   *)
     echo "unexpected args: $args" >&2
@@ -192,7 +199,7 @@ EOF
 
 	restrictions := Restrictions(agent.Adapter)
 	expectedRestrictions := []string{
-		"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:ignored", "rules:ignored", "daemon:disabled",
+		"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:loaded", "rules:ignored", "daemon:disabled",
 	}
 	if len(restrictions) != len(expectedRestrictions) {
 		t.Fatalf("unexpected restrictions count: %#v", restrictions)

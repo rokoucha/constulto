@@ -38,6 +38,10 @@ constulto skill show
 constulto skill install --agent codex --dry-run
 constulto skill install --agent codex
 
+# Claude Code用（~/.claude/skills/constulto/SKILL.md）
+constulto skill install --agent claude --dry-run
+constulto skill install --agent claude
+
 # 既存Skillとの差分確認後、明示的に更新
 constulto skill install --agent codex --force
 ```
@@ -97,9 +101,20 @@ constulto skill install --agent codex --force
 }
 ```
 
+## Claude CodeからCodexへレビューを依頼する
+
+1. `constulto skill install --agent claude` でスキルをインストールします。既存版の更新は `--force` を指定します。
+2. 上記のユーザー設定に `codex` プロファイルを追加します。主にCodexへ依頼する場合は `defaults.agent` も `codex` にします。
+3. `constulto doctor --agent codex` でCLIの対応状況を確認します。
+4. Claude Codeで「constultoでCodexにこの変更をレビューして」と依頼します。CLIからは `constulto review --agent codex --kind implementation --base main --brief brief.md` でも実行できます。
+
+Codexは通常のユーザー設定（`$CODEX_HOME/config.toml`、既定は `~/.codex/config.toml`）を読み込みます。LiteLLM Proxyのprovider・接続先・認証はCodex側で設定し、通常のCodex CLIで接続できる状態にしてください。環境変数も子プロセスへ引き継ぎます。constultoの `model` を指定するとCodex側のモデルを上書きするので、Proxyのモデル名と一致させるか省略してください。
+
+読み取り専用sandbox、承認 `never`、ephemeral、rules無視、daemon無効は起動時に指定します。ユーザー設定のMCPやhooksなども読み込まれるため、レビューに適したCodex設定を使用してください。doctorは推論やProxyへの接続試験を行いません。
+
 ## doctor
 
-設定した全プロファイル（`--agent`指定時は選択したもの）のCLI版と必要な制御フラグ、およびインストール済みSkillが同梱版と一致するかを確認します。
+設定した全プロファイル（`--agent`指定時は選択したもの）のCLI版と必要な制御フラグ、およびCodex・Claude Codeのインストール済みSkillが同梱版と一致するかを確認します。
 実行結果にはツール・テンプレート・アダプターの版、実際に観測できたモデル、適用した制限、provider報告コストを保存します。
 provider報告コストは実際の請求額を保証しません。
 
