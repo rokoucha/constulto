@@ -79,11 +79,11 @@ type followupCommand struct {
 
 type skillCommand struct {
 	Show    struct{}            `cmd:"" help:"同梱Skillを表示します。"`
-	Install skillInstallCommand `cmd:"" help:"Codex用Skillをインストールします。"`
+	Install skillInstallCommand `cmd:"" help:"親エージェント用Skillをインストールします。"`
 }
 
 type skillInstallCommand struct {
-	Agent  string `name:"agent" required:"" enum:"codex" help:"親エージェント。"`
+	Agent  string `name:"agent" required:"" enum:"codex,claude" help:"親エージェント。"`
 	DryRun bool   `name:"dry-run" help:"書き込まず差分と配置先を表示します。"`
 	Force  bool   `name:"force" help:"内容が異なる既存Skillを置換します。"`
 }
@@ -200,10 +200,11 @@ func (a App) doctor(ctx context.Context, args doctorCommand) int {
 		failed = failed || !probe.Supported
 	}
 	result := struct {
-		Checks        []check    `json:"checks"`
-		ConfigSources []string   `json:"configSources"`
-		Skill         skillCheck `json:"skill"`
-	}{checks, loaded.Sources, inspectSkill()}
+		Checks        []check               `json:"checks"`
+		ConfigSources []string              `json:"configSources"`
+		Skill         skillCheck            `json:"skill"`
+		Skills        map[string]skillCheck `json:"skills"`
+	}{checks, loaded.Sources, inspectSkill("codex"), map[string]skillCheck{"codex": inspectSkill("codex"), "claude": inspectSkill("claude")}}
 	if args.JSON {
 		b, _ := json.MarshalIndent(result, "", "  ")
 		fmt.Fprintln(a.Stdout, string(b))
@@ -217,11 +218,14 @@ func (a App) doctor(ctx context.Context, args doctorCommand) int {
 				fmt.Fprintf(a.Stdout, "capabilities: unsupported (%s)\n", item.Probe.Error)
 			}
 		}
-		fmt.Fprintf(a.Stdout, "skill: %s", result.Skill.Status)
-		if result.Skill.Path != "" {
-			fmt.Fprintf(a.Stdout, " (%s)", result.Skill.Path)
+		for _, agent := range []string{"codex", "claude"} {
+			check := result.Skills[agent]
+			fmt.Fprintf(a.Stdout, "skill (%s): %s", agent, check.Status)
+			if check.Path != "" {
+				fmt.Fprintf(a.Stdout, " (%s)", check.Path)
+			}
+			fmt.Fprintln(a.Stdout)
 		}
-		fmt.Fprintln(a.Stdout)
 	}
 	if errors.Is(ctx.Err(), context.Canceled) {
 		return 130
@@ -819,7 +823,7 @@ func (a App) skillInstall(args skillInstallCommand) int {
 		fmt.Fprintln(a.Stderr, err)
 		return 1
 	}
-	destination := filepath.Join(home, ".codex", "skills", "constulto", "SKILL.md")
+	destination := skillPath(home, args.Agent)
 	if existing, err := os.ReadFile(destination); err == nil {
 		if bytes.Equal(existing, content) {
 			fmt.Fprintf(a.Stdout, "already current: %s\n", destination)
@@ -861,12 +865,20 @@ type skillCheck struct {
 	Path   string `json:"path,omitempty"`
 }
 
-func inspectSkill() skillCheck {
+func skillPath(home, agent string) string {
+	dir := ".codex"
+	if agent == "claude" {
+		dir = ".claude"
+	}
+	return filepath.Join(home, dir, "skills", "constulto", "SKILL.md")
+}
+
+func inspectSkill(agent string) skillCheck {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return skillCheck{Status: "unavailable"}
 	}
-	path := filepath.Join(home, ".codex", "skills", "constulto", "SKILL.md")
+	path := skillPath(home, agent)
 	existing, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return skillCheck{Status: "not-installed", Path: path}
