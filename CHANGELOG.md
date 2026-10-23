@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.0.4](https://github.com/rokoucha/constulto/compare/v0.0.3...v0.0.4) - 2026-10-23
+
+### Fixes and improvements
+- Update Songmu/tagpr action to v1.21.3 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/14
+- fix: Claude Codeから設定済みCodex providerへレビューを依頼できるようにする by @rokoucha in https://github.com/rokoucha/constulto/pull/16
+
 ## [v0.0.3](https://github.com/rokoucha/constulto/compare/v0.0.2...v0.0.3) - 2026-10-16
 
 ### Fixes and improvements
