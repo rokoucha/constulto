@@ -23,7 +23,7 @@ if [ "$1" = "--version" ]; then
 elif [ "$1" = "--help" ]; then
   echo "--no-daemon --ask-for-approval exec"
 elif [ "$1" = "exec" ] && [ "$2" = "--help" ]; then
-  echo "--json --output-schema --sandbox --ephemeral --ignore-rules --cd --model"
+  echo "--json --output-schema --sandbox --config --disable --ephemeral --ignore-rules --cd --model"
 fi
 `
 	if err := os.WriteFile(command, []byte(script), 0700); err != nil {
@@ -49,7 +49,7 @@ if [ "$1" = "--version" ]; then
 elif [ "$1" = "--help" ]; then
   echo "--no-daemon exec"
 elif [ "$1" = "exec" ] && [ "$2" = "--help" ]; then
-  echo "--json --output-schema --sandbox --ephemeral --ignore-rules --cd --model"
+  echo "--json --output-schema --sandbox --config --disable --ephemeral --ignore-rules --cd --model"
 fi
 `
 	if err := os.WriteFile(command, []byte(script), 0700); err != nil {
@@ -150,7 +150,7 @@ for arg in "$@"; do
   if [ "$arg" = "--ignore-user-config" ]; then exit 4; fi
 done
 case "$args" in
-  *"--no-daemon"*"--ask-for-approval never"*"exec"*"--json"*"--output-schema"*"--sandbox read-only"*"--ephemeral"*"--ignore-rules"*"--color never"*"--cd "*"--model test-model"*" -")
+  *"--no-daemon"*"--ask-for-approval never"*"exec"*"--json"*"--output-schema"*"--sandbox workspace-write"*"--config sandbox_workspace_write.network_access=false"*"--disable multi_agent"*"--ephemeral"*"--ignore-rules"*"--color never"*"--cd "*"--model test-model"*" -")
     ;;
   *)
     echo "unexpected args: $args" >&2
@@ -199,7 +199,7 @@ EOF
 
 	restrictions := Restrictions(agent.Adapter)
 	expectedRestrictions := []string{
-		"sandbox:read-only", "approval:never", "session:ephemeral", "user-config:loaded", "rules:ignored", "daemon:disabled",
+		"sandbox:workspace-write", "workspace:disposable-clone", "tmpdir:writable", "network:disabled", "subagents:disabled", "approval:never", "session:ephemeral", "user-config:loaded", "rules:ignored", "daemon:disabled",
 	}
 	if len(restrictions) != len(expectedRestrictions) {
 		t.Fatalf("unexpected restrictions count: %#v", restrictions)

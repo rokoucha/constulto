@@ -110,7 +110,15 @@ constulto skill install --agent codex --force
 
 Codexは通常のユーザー設定（`$CODEX_HOME/config.toml`、既定は `~/.codex/config.toml`）を読み込みます。LiteLLM Proxyのprovider・接続先・認証はCodex側で設定し、通常のCodex CLIで接続できる状態にしてください。環境変数も子プロセスへ引き継ぎます。constultoの `model` を指定するとCodex側のモデルを上書きするので、Proxyのモデル名と一致させるか省略してください。
 
-読み取り専用sandbox、承認 `never`、ephemeral、rules無視、daemon無効は起動時に指定します。ユーザー設定のMCPやhooksなども読み込まれるため、レビューに適したCodex設定を使用してください。doctorは推論やProxyへの接続試験を行いません。
+承認 `never`、ephemeral、rules無視、daemon無効は起動時に指定します。ユーザー設定のMCPやhooksなども読み込まれるため、レビューに適したCodex設定を使用してください。doctorは推論やProxyへの接続試験を行いません。
+
+### Codexの作業ディレクトリ
+
+Codexのレビュアーは、仮説をファイル変更やテスト実行で確かめられます。
+
+- HEADを `git clone --shared` した一時ディレクトリに、追跡中ファイルの未commitの変更と `--include` したファイルを再現し、そこを作業ディレクトリとして `--sandbox workspace-write` で起動します。ignoredファイルと `--include` していない未追跡ファイルは複製しません
+- 書き込めるのはクローンと `$TMPDIR`・`/tmp` だけで、元のリポジトリへの書き込みはCodexのsandboxで防ぎます（リポジトリ自体が一時ディレクトリ配下にある場合は防げません）。ネットワークとサブエージェントは `config.toml` の設定にかかわらず無効にします。クローンの準備ではユーザーのGitフックを実行しません
+- レビュアーが加えた変更は記録先の `workspace.patch` に保存し、一時ディレクトリは実行後に削除します。差分が4MiBを超える場合は変更ファイルの一覧だけを保存します
 
 ## doctor
 

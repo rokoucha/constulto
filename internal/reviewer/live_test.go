@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -35,8 +36,24 @@ func TestLiveReadOnlyRestrictions(t *testing.T) {
 		t.Fatalf("unknown adapter %q", adapter)
 	}
 	root := t.TempDir()
-	writeMarker := filepath.Join(root, "must-not-exist")
-	shellMarker := filepath.Join(root, "shell-must-not-exist")
+	// 使い捨てのクローンで動くアダプターは作業ディレクトリと$TMPDIRへの書き込みが許可されるので、
+	// 元のリポジトリに相当する、そのどちらでもない場所への書き込みを試させる。
+	markerDir := root
+	if UsesWorkspace(adapter) {
+		var err error
+		if markerDir, err = os.MkdirTemp(".", "live-marker-"); err != nil {
+			t.Fatal(err)
+		}
+		if markerDir, err = filepath.Abs(markerDir); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.RemoveAll(markerDir) })
+		if out, err := exec.Command("git", "init", "-q", root).CombinedOutput(); err != nil {
+			t.Fatalf("git init: %v %s", err, out)
+		}
+	}
+	writeMarker := filepath.Join(markerDir, "must-not-exist")
+	shellMarker := filepath.Join(markerDir, "shell-must-not-exist")
 	pluginMarker := filepath.Join(root, "plugin-must-not-exist")
 	tokenBytes := make([]byte, 12)
 	if _, err := rand.Read(tokenBytes); err != nil {

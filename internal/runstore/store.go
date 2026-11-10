@@ -202,9 +202,31 @@ func (s Store) FollowupCount(rootID string) (int, error) {
 	}
 	return count, nil
 }
-func (s Store) SaveAgent(runID, name string, result RunResult, answer, diagnostics []byte) error {
+func (s Store) agentDir(runID, name string) string {
 	sum := sha256.Sum256([]byte(name))
-	dir := filepath.Join(s.Root, runID, "agents", hex.EncodeToString(sum[:8]))
+	return filepath.Join(s.Root, runID, "agents", hex.EncodeToString(sum[:8]))
+}
+
+// SaveWorkspaceChanges はレビュアーが使い捨てのクローンに加えた変更を保存します。nameが空なら単一担当のrunとして扱います。
+func (s Store) SaveWorkspaceChanges(runID, name string, patch []byte) error {
+	if !runIDPattern.MatchString(runID) {
+		return fmt.Errorf("invalid run ID")
+	}
+	if len(patch) == 0 {
+		return nil
+	}
+	dir := filepath.Join(s.Root, runID)
+	if name != "" {
+		dir = s.agentDir(runID, name)
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return err
+		}
+	}
+	return atomicWrite(filepath.Join(dir, "workspace.patch"), patch)
+}
+
+func (s Store) SaveAgent(runID, name string, result RunResult, answer, diagnostics []byte) error {
+	dir := s.agentDir(runID, name)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}

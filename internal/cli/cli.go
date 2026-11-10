@@ -282,7 +282,7 @@ func (a App) review(ctx context.Context, args reviewCommand) int {
 		fmt.Fprintf(a.Stderr, "agent is not runnable: %s\n", probe.Error)
 		return 2
 	}
-	prompt, err := buildPrompt(args.Kind, target, brief)
+	prompt, err := buildPrompt(args.Kind, target, brief, reviewer.UsesWorkspace(agent.Adapter))
 	if err != nil {
 		fmt.Fprintln(a.Stderr, err)
 		return 2
@@ -306,7 +306,7 @@ func (a App) review(ctx context.Context, args reviewCommand) int {
 	runCtx, cancel := context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
 	defer cancel()
 	started := time.Now().UTC()
-	review, metadata, raw, diagnostics, runErr := reviewer.Run(runCtx, agent, root, prompt)
+	review, metadata, raw, diagnostics, runErr := runReviewer(runCtx, store, manifest.ID, "", agent, target, prompt)
 	status := "completed"
 	if runErr != nil {
 		status = "failed"
@@ -320,7 +320,7 @@ func (a App) review(ctx context.Context, args reviewCommand) int {
 	if model == "" {
 		model = "unknown"
 	}
-	result := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: args.Kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(), Agent: name, Adapter: agent.Adapter, AdapterVersion: probe.Version, RequestedModel: agent.Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(agent.Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
+	result := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: args.Kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(reviewer.UsesWorkspace(agent.Adapter)), Agent: name, Adapter: agent.Adapter, AdapterVersion: probe.Version, RequestedModel: agent.Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(agent.Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
 	if runErr != nil {
 		result.ErrorType = reviewer.ErrorKind(runErr)
 		result.Error = runErr.Error()
@@ -386,10 +386,12 @@ func (a App) reviewMany(ctx context.Context, kind, base string, brief []byte, ti
 			return 2
 		}
 	}
-	prompt, err := buildPrompt(kind, target, brief)
-	if err != nil {
-		fmt.Fprintln(a.Stderr, err)
-		return 2
+	prompts := make([][]byte, len(names))
+	for i, agent := range profiles {
+		if prompts[i], err = buildPrompt(kind, target, brief, reviewer.UsesWorkspace(agent.Adapter)); err != nil {
+			fmt.Fprintln(a.Stderr, err)
+			return 2
+		}
 	}
 	store, err := runstore.Default()
 	if err != nil {
@@ -422,7 +424,7 @@ func (a App) reviewMany(ctx context.Context, kind, base string, brief []byte, ti
 			started := time.Now().UTC()
 			runCtx, cancel := context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
 			defer cancel()
-			review, metadata, raw, diagnostics, runErr := reviewer.Run(runCtx, profiles[i], root, prompt)
+			review, metadata, raw, diagnostics, runErr := runReviewer(runCtx, store, manifest.ID, names[i], profiles[i], target, prompts[i])
 			status := "completed"
 			if runErr != nil {
 				status = "failed"
@@ -434,7 +436,7 @@ func (a App) reviewMany(ctx context.Context, kind, base string, brief []byte, ti
 			if model == "" {
 				model = "unknown"
 			}
-			r := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(), Agent: names[i], Adapter: profiles[i].Adapter, AdapterVersion: probes[i].Version, RequestedModel: profiles[i].Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(profiles[i].Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
+			r := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(reviewer.UsesWorkspace(profiles[i].Adapter)), Agent: names[i], Adapter: profiles[i].Adapter, AdapterVersion: probes[i].Version, RequestedModel: profiles[i].Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(profiles[i].Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
 			if runErr != nil {
 				r.ErrorType = reviewer.ErrorKind(runErr)
 				r.Error = runErr.Error()
@@ -482,7 +484,7 @@ func (a App) reviewMany(ctx context.Context, kind, base string, brief []byte, ti
 		status = "cancelled"
 	}
 	started := manifest.StartedAt
-	parent := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(), Agent: "multiple", Adapter: "multiple", AdapterVersion: "multiple", Model: "multiple", Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), AgentResults: results}
+	parent := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(false), Agent: "multiple", Adapter: "multiple", AdapterVersion: "multiple", Model: "multiple", Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), AgentResults: results}
 	if hasCost {
 		parent.ProviderCostUSD = &cost
 	}
@@ -505,14 +507,34 @@ func (a App) reviewMany(ctx context.Context, kind, base string, brief []byte, ti
 	return 1
 }
 
-func buildPrompt(kind string, target gitstate.Target, brief []byte) ([]byte, error) {
+func promptTemplate(workspace bool) ([]byte, error) {
 	template, err := assets.FS.ReadFile("prompts/review.md")
 	if err != nil {
 		return nil, err
 	}
+	accessFile := "prompts/access-read-only.md"
+	if workspace {
+		accessFile = "prompts/access-workspace.md"
+	}
+	access, err := assets.FS.ReadFile(accessFile)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Replace(template, []byte("{{access}}"), bytes.TrimSpace(access), 1), nil
+}
+
+func buildPrompt(kind string, target gitstate.Target, brief []byte, workspace bool) ([]byte, error) {
+	template, err := promptTemplate(workspace)
+	if err != nil {
+		return nil, err
+	}
+	root := target.Root
+	if workspace {
+		root = "current working directory (disposable copy of " + target.Root + ")"
+	}
 	var b bytes.Buffer
 	b.Write(template)
-	fmt.Fprintf(&b, "\n\nReview kind: %s\nRepository root: %s\nTarget fingerprint: %s\n", kind, target.Root, target.Fingerprint)
+	fmt.Fprintf(&b, "\n\nReview kind: %s\nRepository root: %s\nTarget fingerprint: %s\n", kind, root, target.Fingerprint)
 	b.WriteString("\n<brief>\n")
 	b.Write(brief)
 	b.WriteString("\n</brief>\n")
@@ -532,8 +554,8 @@ func buildPrompt(kind string, target gitstate.Target, brief []byte) ([]byte, err
 	return b.Bytes(), nil
 }
 
-func promptTemplateVersion() string {
-	template, err := assets.FS.ReadFile("prompts/review.md")
+func promptTemplateVersion(workspace bool) string {
+	template, err := promptTemplate(workspace)
 	if err != nil {
 		return "unknown"
 	}
@@ -565,6 +587,9 @@ func makePlan(name string, agent config.Agent, kind string, t gitstate.Target, s
 	accessible := "repository read/search; ignored files may be readable if discovered; external-directory isolation depends on the adapter"
 	if agent.Adapter == "opencode" {
 		accessible = "repository read/search; .env files and external directories denied"
+	}
+	if reviewer.UsesWorkspace(agent.Adapter) {
+		accessible = "write and run commands in a disposable clone of HEAD plus tracked changes and included files; ignored and unselected untracked files are not copied; reading outside the clone depends on the adapter"
 	}
 	return reviewPlan{Kind: kind, Agent: name, Adapter: agent.Adapter, Command: agent.Command, Root: t.Root, Target: t.Fingerprint, MergeBase: t.MergeBase, ReviewScope: fmt.Sprintf("%s plus %d explicitly included file(s)", scope, len(t.Included)), AccessibleScope: accessible, Restrictions: reviewer.Restrictions(agent.Adapter), ConfigSources: append([]string(nil), sources...), Excluded: append([]string(nil), t.Excluded...), Untracked: append([]string(nil), t.Untracked...)}
 }
@@ -719,7 +744,7 @@ func (a App) followup(ctx context.Context, args followupCommand) int {
 		fmt.Fprintf(a.Stderr, "agent is not runnable: %s\n", probe.Error)
 		return 2
 	}
-	prompt, err := buildFollowupPrompt(original.Kind, target, originalBrief, previousReview, rebuttal)
+	prompt, err := buildFollowupPrompt(original.Kind, target, originalBrief, previousReview, rebuttal, reviewer.UsesWorkspace(agent.Adapter))
 	if err != nil {
 		fmt.Fprintln(a.Stderr, err)
 		return 2
@@ -742,7 +767,7 @@ func (a App) followup(ctx context.Context, args followupCommand) int {
 	runCtx, cancel := context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
 	defer cancel()
 	started := time.Now().UTC()
-	review, metadata, raw, diagnostics, runErr := reviewer.Run(runCtx, agent, original.Target.Root, prompt)
+	review, metadata, raw, diagnostics, runErr := runReviewer(runCtx, store, manifest.ID, "", agent, target, prompt)
 	status := "completed"
 	if runErr != nil {
 		status = "failed"
@@ -756,7 +781,7 @@ func (a App) followup(ctx context.Context, args followupCommand) int {
 	if model == "" {
 		model = "unknown"
 	}
-	out := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: original.Kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(), Agent: name, Adapter: agent.Adapter, AdapterVersion: probe.Version, RequestedModel: agent.Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(agent.Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
+	out := runstore.RunResult{SchemaVersion: 1, RunID: manifest.ID, Kind: original.Kind, TargetFingerprint: target.Fingerprint, ToolVersion: Version, ToolCommit: Commit, SourceURL: SourceURL, TemplateVersion: promptTemplateVersion(reviewer.UsesWorkspace(agent.Adapter)), Agent: name, Adapter: agent.Adapter, AdapterVersion: probe.Version, RequestedModel: agent.Model, Model: model, ObservedModels: metadata.ObservedModels, Restrictions: reviewer.Restrictions(agent.Adapter), ProviderCostUSD: metadata.ProviderCostUSD, Status: status, Stale: stale, StartedAt: started, FinishedAt: time.Now().UTC(), Review: review}
 	if runErr != nil {
 		out.ErrorType = reviewer.ErrorKind(runErr)
 		out.Error = runErr.Error()
@@ -780,8 +805,29 @@ func (a App) followup(ctx context.Context, args followupCommand) int {
 	return 0
 }
 
-func buildFollowupPrompt(kind string, target gitstate.Target, originalBrief []byte, previous *runstore.Review, rebuttal []byte) ([]byte, error) {
-	base, err := buildPrompt(kind, target, originalBrief)
+// runReviewer は使い捨てのクローンを使うアダプターならクローンを用意して実行し、加えられた変更を記録します。
+func runReviewer(ctx context.Context, store runstore.Store, runID, name string, agent config.Agent, target gitstate.Target, prompt []byte) (*runstore.Review, reviewer.Metadata, []byte, []byte, error) {
+	if !reviewer.UsesWorkspace(agent.Adapter) {
+		return reviewer.Run(ctx, agent, target.Root, prompt)
+	}
+	workspace, err := gitstate.NewWorkspace(target.Root, target.Included)
+	if err != nil {
+		return nil, reviewer.Metadata{}, nil, nil, fmt.Errorf("prepare reviewer workspace: %w", err)
+	}
+	defer workspace.Close()
+	review, metadata, raw, diagnostics, runErr := reviewer.Run(ctx, agent, workspace.Dir, prompt)
+	patch, err := workspace.Changes()
+	if err == nil {
+		err = store.SaveWorkspaceChanges(runID, name, patch)
+	}
+	if err != nil {
+		diagnostics = append(diagnostics, []byte("\nconstulto: save workspace changes: "+err.Error()+"\n")...)
+	}
+	return review, metadata, raw, diagnostics, runErr
+}
+
+func buildFollowupPrompt(kind string, target gitstate.Target, originalBrief []byte, previous *runstore.Review, rebuttal []byte, workspace bool) ([]byte, error) {
+	base, err := buildPrompt(kind, target, originalBrief, workspace)
 	if err != nil {
 		return nil, err
 	}
