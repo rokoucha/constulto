@@ -51,7 +51,7 @@ func probeCodex(ctx context.Context, command string) Probe {
 	if err != nil {
 		return Probe{Version: versionText, Error: err.Error()}
 	}
-	for _, flag := range []string{"--json", "--output-schema", "--sandbox", "--ephemeral", "--ignore-rules", "--cd", "--model"} {
+	for _, flag := range []string{"--json", "--output-schema", "--sandbox", "--config", "--disable", "--ephemeral", "--ignore-rules", "--cd", "--model"} {
 		if !bytes.Contains(execHelp, []byte(flag)) {
 			return Probe{Version: versionText, Error: "required capability missing: " + flag}
 		}
@@ -60,7 +60,8 @@ func probeCodex(ctx context.Context, command string) Probe {
 	return Probe{Version: versionText, Supported: true}
 }
 
-// runCodex は接続設定を引き継ぎ、読み取り専用で構造化レビュー結果を取得します。
+// runCodex は接続設定を引き継ぎ、構造化レビュー結果を取得します。
+// 書き込めるのは、呼び出し元が用意した使い捨てのクローン（workingDir）だけです。
 func runCodex(ctx context.Context, agent config.Agent, workingDir string, prompt []byte) (*runstore.Review, Metadata, []byte, []byte, error) {
 	tmp, err := os.MkdirTemp("", "constulto-codex-")
 	if err != nil {
@@ -88,7 +89,10 @@ func runCodex(ctx context.Context, agent config.Agent, workingDir string, prompt
 		"exec",
 		"--json",
 		"--output-schema", schemaPath,
-		"--sandbox", "read-only",
+		"--sandbox", "workspace-write",
+		// ユーザー設定のconfig.tomlでネットワークが許可されていても無効にする。
+		"--config", "sandbox_workspace_write.network_access=false",
+		"--disable", "multi_agent",
 		"--ephemeral",
 		"--ignore-rules",
 		"--color", "never",

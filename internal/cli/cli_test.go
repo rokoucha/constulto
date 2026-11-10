@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -86,9 +87,12 @@ func TestReviewDryRunJSONIsOneDocument(t *testing.T) {
 }
 
 func TestBuildPromptRequestsReviewBeyondListedPerspectives(t *testing.T) {
-	prompt, err := buildPrompt("design", gitstate.Target{}, []byte("Check this design."))
+	prompt, err := buildPrompt("design", gitstate.Target{}, []byte("Check this design."), false)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(prompt), "コマンドの実行") || strings.Contains(string(prompt), "{{access}}") {
+		t.Fatalf("read-only access rule is missing: %s", prompt)
 	}
 	if !strings.Contains(string(prompt), "観点をレビュー範囲の上限と解釈せず") || !strings.Contains(string(prompt), "欠けた前提・観点・反例") {
 		t.Fatalf("critical review instruction is missing: %s", prompt)
@@ -151,6 +155,87 @@ func TestSkillDryRunShowsDifferenceAndForceUpdates(t *testing.T) {
 	}
 	if !strings.Contains(string(content), "constulto レビュー") {
 		t.Fatalf("not updated: %s", content)
+	}
+}
+
+func TestCodexReviewRunsInDisposableClone(t *testing.T) {
+	repo := t.TempDir()
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}, {"-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgSign=false", "commit", "-qm", "init"}} {
+		if args[0] == "add" {
+			if err := os.WriteFile(filepath.Join(repo, "main.txt"), []byte("committed\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(repo, "main.txt"), []byte("working\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	t.Setenv("XDG_STATE_HOME", state)
+	brief := filepath.Join(dir, "brief.md")
+	if err := os.WriteFile(brief, []byte("Review this change."), 0600); err != nil {
+		t.Fatal(err)
+	}
+	argsLog := filepath.Join(dir, "args.log")
+	review := `{\"summary\":\"tried\",\"findings\":[],\"decisions\":[],\"scope\":{\"reviewed\":[\"main.txt\"],\"notReviewed\":[],\"testsNotRun\":[]}}`
+	command := filepath.Join(dir, "fake-codex")
+	script := `#!/bin/sh
+case "$1" in
+  --version) echo "codex-cli 1.0" ;;
+  --help) echo "--no-daemon --ask-for-approval exec" ;;
+  exec) echo "--json --output-schema --sandbox --config --disable --ephemeral --ignore-rules --cd --model" ;;
+  *)
+    echo "$@" > "` + argsLog + `"
+    cat > /dev/null
+    test "$(cat main.txt)" = working || exit 3
+    echo tried > experiment.txt
+    echo '{"type":"item.completed","item":{"id":"1","type":"agent_message","text":"` + review + `"}}'
+    echo '{"type":"turn.completed"}'
+    ;;
+esac
+`
+	if err := os.WriteFile(command, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(dir, "config.json")
+	cfg := map[string]any{"version": 1, "defaults": map[string]any{"agent": "cx"}, "agents": map[string]any{"cx": map[string]any{"adapter": "codex", "command": command}}}
+	b, _ := json.Marshal(cfg)
+	if err := os.WriteFile(configPath, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out, stderr bytes.Buffer
+	app := App{Stdout: &out, Stderr: &stderr, Getwd: func() (string, error) { return repo, nil }}
+	if code := app.Run(context.Background(), []string{"review", "--kind", "implementation", "--base", "HEAD", "--brief", brief, "--config", configPath}); code != 0 {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, out.String(), stderr.String())
+	}
+	args, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(args), "--sandbox workspace-write") || !strings.Contains(string(args), "sandbox_workspace_write.network_access=false") || strings.Contains(string(args), "--cd "+repo+" ") {
+		t.Fatalf("unexpected codex args: %s", args)
+	}
+	if _, err := os.Stat(filepath.Join(repo, "experiment.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("reviewer wrote into the original repository: %v", err)
+	}
+	runs := filepath.Join(state, "constulto", "runs")
+	entries, err := os.ReadDir(runs)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("runs: %v %v", entries, err)
+	}
+	patch, err := os.ReadFile(filepath.Join(runs, entries[0].Name(), "workspace.patch"))
+	if err != nil || !strings.Contains(string(patch), "+tried") || strings.Contains(string(patch), "main.txt") {
+		t.Fatalf("unexpected workspace patch: %s %v", patch, err)
+	}
+	_, result, _, err := (runstore.Store{Root: runs}).Load(entries[0].Name())
+	if err != nil || result.Restrictions[0] != "sandbox:workspace-write" {
+		t.Fatalf("unexpected result: %#v %v", result, err)
 	}
 }
 

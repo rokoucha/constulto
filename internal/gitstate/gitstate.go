@@ -161,8 +161,15 @@ type includeBuffer struct{ p *[]byte }
 func (b *includeBuffer) Write(p []byte) (int, error) { *b.p = append(*b.p, p...); return len(p), nil }
 
 func git(dir string, args ...string) ([]byte, error) {
+	return gitInput(dir, nil, args...)
+}
+
+func gitInput(dir string, input []byte, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	if input != nil {
+		cmd.Stdin = bytes.NewReader(input)
+	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
