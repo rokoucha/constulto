@@ -1,11 +1,13 @@
 # Changelog
 
-## [v0.0.5](https://github.com/rokoucha/constulto/compare/v0.0.4...v0.0.5) - 2026-11-05
+## [v0.0.5](https://github.com/rokoucha/constulto/compare/v0.0.4...v0.0.5) - 2026-11-10
 
 ### Fixes and improvements
 - Update Songmu/tagpr action to v1.21.4 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/17
 - Update module github.com/alecthomas/kong to v1.17.0 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/19
 - Update Songmu/tagpr action to v1.22.0 by @renovate[bot] in https://github.com/rokoucha/constulto/pull/20
+- feat: Codexのレビュアーが使い捨てのクローンで仮説を検証できるようにする by @rokoucha in https://github.com/rokoucha/constulto/pull/21
+- Release for v0.0.5 by @github-actions[bot] in https://github.com/rokoucha/constulto/pull/18
 
 ## [v0.0.4](https://github.com/rokoucha/constulto/compare/v0.0.3...v0.0.4) - 2026-10-23
 
