@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# Serialize PR updates, tagging, and publication without interrupting a release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -46,3 +52,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      - name: Close duplicate release PRs
+        if: steps.tagpr.outputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_PR_BRANCH: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
+        run: |
+          # A PR update racing with a human merge can recreate the released PR.
+          gh pr list --state open --base main --head "$RELEASE_PR_BRANCH" \
+            --json number,isCrossRepository --jq '.[] | select(.isCrossRepository == false) | .number' |
+          while IFS= read -r number; do
+            gh pr close "$number"
+          done
