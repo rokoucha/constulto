@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.0.6](https://github.com/rokoucha/constulto/compare/v0.0.5...v0.0.6) - 2026-11-13
+
+### Fixes and improvements
+- fix: リリース処理を直列化し公開後に重複PRを整理する by @rokoucha in https://github.com/rokoucha/constulto/pull/23
+- fix: use declarative Homebrew install steps by @rokoucha in https://github.com/rokoucha/constulto/pull/25
+
 ## [v0.0.5](https://github.com/rokoucha/constulto/compare/v0.0.4...v0.0.5) - 2026-11-05
 
 ### Fixes and improvements
